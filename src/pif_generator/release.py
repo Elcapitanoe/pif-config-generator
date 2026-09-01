@@ -83,22 +83,22 @@ class ReleaseManager:
     def publish_release(
         self,
         target_repo: str,
-        tag: str,
-        channel: str,
         files: List[Path],
     ) -> None:
         repo = self.client.get_repo(target_repo)
-        normalized_channel = channel.lower()
-        release_tag = f"v{tag}-{normalized_channel}"
-        title = f"{normalized_channel.capitalize()} · {tag}"
-        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        now = datetime.now(timezone.utc)
+        date_tag = now.strftime("%Y.%m.%d")
+        date_str = now.strftime("%Y-%m-%d")
+
+        release_tag = f"v{date_tag}"
+        title = f"PIF Profiles · {date_tag}"
 
         body = (
-            f"### Upstream Sync\n"
-            f"- Channel: `{normalized_channel}`\n"
-            f"- Source Tag: `{tag}`\n"
-            f"- Artifacts: {len(files)} JSON profiles\n\n"
-            f"Generated via automated CI pipeline on {date_str} UTC."
+            f"### Unified Release\n"
+            f"- Release Tag: `{release_tag}`\n"
+            f"- Release Date: {date_str} UTC\n"
+            f"- Artifacts: {len(files)} JSON profiles (Stable & Beta)\n\n"
+            f"Automated build from monitored upstream repositories."
         )
 
         try:
