@@ -107,15 +107,10 @@ jobs:
       - name: Upload channel output
         uses: actions/upload-artifact@v4
         with:
-          name: channel-${{ matrix.release.channel }}
-          path: output/*.json
-          retention-days: 1
-
-      - name: Upload state tracker
-        uses: actions/upload-artifact@v4
-        with:
-          name: state-${{ matrix.release.channel }}
-          path: state/last_${{ matrix.release.channel }}_tag.txt
+          name: pif-artifact-${{ matrix.release.channel }}
+          path: |
+            output/*.json
+            state/last_${{ matrix.release.channel }}_tag.txt
           retention-days: 1
 
   publish-release:
@@ -141,7 +136,7 @@ jobs:
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: channel-*
+          pattern: pif-artifact-*
           path: combined/
 
       - name: Consolidate profiles and state
@@ -164,7 +159,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add state/last_*_tag.txt
+          git add -A state/
           
           if ! git diff --staged --quiet; then
             git commit -m "chore(tracker): update release tag state"
