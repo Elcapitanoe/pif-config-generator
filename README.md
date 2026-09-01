@@ -71,63 +71,181 @@ Properties are resolved across partition namespaces (`system_ext` > `system` > `
 
 ## Installation
 
+### Prerequisites
+
+Linux system (Ubuntu/Debian, Fedora, Arch, or macOS/WSL), install `Python 3.10+`, `pip`, `venv`, and `git`:
+
+**Ubuntu / Debian / WSL:**
 ```bash
+sudo apt update && sudo apt install -y python3 python3-pip python3-venv git
+```
+
+**Fedora / RHEL:**
+```bash
+sudo dnf install -y python3 python3-pip git
+```
+
+**Arch Linux:**
+```bash
+sudo pacman -S --needed python python-pip git
+```
+
+**macOS (Homebrew):**
+```bash
+brew install python git
+```
+
+### Setup
+
+```bash
+# 1. Clone the repository
 git clone https://github.com/Elcapitanoe/pif-config-generator.git
 cd pif-config-generator
+
+# 2. Create and activate an isolated virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# 3. Upgrade pip and install package in editable mode
+pip install --upgrade pip
 pip install -e .
+```
+
+Verify the installation:
+
+```bash
+pif-gen --help
 ```
 
 ---
 
-## CLI Reference
+## Usage
 
-`pif-gen` provides commands for checking, extracting, building, and publishing profiles.
+### 1. Build a Single Profile Locally
 
-### 1. Check Upstream
-
-Compares remote releases against local state files (`state/last_<channel>_tag.txt`):
-
-```bash
-pif-gen check --state-dir state
-```
-
-### 2. Build Single File
-
-Generates a JSON profile from a local `system.prop`:
+Generate a validated PIF JSON profile from a local `system.prop` or property dump. No network access or GitHub token required.
 
 ```bash
 pif-gen build --file path/to/system.prop --output-dir output
 ```
 
-### 3. Build Batch (CI Mode)
+Options:
+- `--file <path>`: Path to the input property dump file.
+- `--output-dir <dir>`: Destination directory for the generated JSON file (defaults to current directory `.`).
+- `--format <extended|legacy>`: Profile schema to target (`extended` for modern modules, `legacy` for older modules; default: `extended`).
+- `--channel <stable|beta>`: Target release channel label (default: `stable`).
 
-Extracts and validates profiles from an asset URL list:
+#### Capturing device properties with ADB
+
+To dump build properties directly from a connected Android device:
 
 ```bash
-pif-gen build \
-  --channel beta \
-  --assets-json '[{"name": "Komodo_beta.zip", "url": "https://..."}]' \
-  --output-dir output \
-  --manifest output/manifest.txt
+adb shell getprop | sed -r 's/\[(.*)\]: \[(.*)\]/\1=\2/' > system.prop
+pif-gen build --file system.prop --output-dir output
 ```
 
-### 4. Publish Release
+#### Sample `system.prop`
 
-Deploys consolidated artifacts to GitHub Releases:
-
-```bash
-export GITHUB_TOKEN="ghp_xxx"
-pif-gen publish \
-  --repo "Elcapitanoe/pif-config-generator" \
-  --manifest output/manifest.txt
+```properties
+ro.system_ext.build.id=CP41.260814.003.B1
+ro.product.system_ext.brand=google
+ro.product.system_ext.device=komodo
+ro.product.system_ext.manufacturer=Google
+ro.product.system_ext.model=Pixel 9 Pro XL
+ro.product.system_ext.name=komodo_beta
+ro.system_ext.build.fingerprint=google/komodo_beta/komodo:17/CP41.260814.003.B1/16166531:user/release-keys
+ro.build.version.security_patch=2026-08-14
+ro.product.first_api_level=34
+ro.system_ext.build.version.release=17
+ro.system_ext.build.type=user
+ro.system_ext.build.tags=release-keys
+ro.debuggable=0
 ```
 
 ---
 
-## Testing
+### 2. Check for Upstream Updates
+
+Poll monitored upstream repositories (`Pixel-Props/build.prop` for stable, `Elcapitanoe/Build-Prop-BETA` for beta) and compare latest releases against local tracking tags in `state/last_<channel>_tag.txt`.
+
+Requires a GitHub personal access token with repo scope:
 
 ```bash
-python3 -m unittest discover tests
+export GITHUB_TOKEN="ghp_xxx"
+pif-gen check --state-dir state
+```
+
+Options:
+- `--state-dir <dir>`: Directory storing release tag state files (default: `state`).
+- `--token <token>`: GitHub personal access token (falls back to the `GITHUB_TOKEN` environment variable).
+
+Sample output:
+
+```json
+{
+  "new_release": true,
+  "results": [
+    {
+      "channel": "beta",
+      "tag": "2026.08.14",
+      "assets": [
+        {
+          "name": "Komodo_beta.zip",
+          "url": "https://github.com/.../Komodo_beta.zip"
+        }
+      ],
+      "count": 1
+    }
+  ]
+}
+```
+
+---
+
+### 3. Batch Build from Asset ZIPs (CI Pipeline)
+
+Download property ZIP archives from URLs, extract `system.prop` in memory, validate against the Pydantic schema, write JSON files to disk, and write a manifest list of generated paths:
+
+```bash
+pif-gen build \
+  --channel beta \
+  --assets-json '[{"name": "Komodo_beta.zip", "url": "https://github.com/.../Komodo_beta.zip"}]' \
+  --output-dir output \
+  --manifest output/manifest.txt
+```
+
+Options:
+- `--channel <stable|beta>`: Target release channel for the asset payloads.
+- `--assets-json <json>`: JSON array of `{ "name": "...", "url": "..." }` asset descriptors.
+- `--output-dir <dir>`: Output directory for generated JSON files.
+- `--manifest <path>`: Output text file tracking generated profile paths.
+
+---
+
+### 4. Publish Release to GitHub
+
+Upload generated profiles from a manifest file to GitHub Releases on the target repository using unified daily version tags (`vYYYY.MM.DD`):
+
+```bash
+export GITHUB_TOKEN="ghp_xxx"
+pif-gen publish \
+  --repo "owner/repo" \
+  --manifest output/manifest.txt
+```
+
+Options:
+- `--repo <owner/repo>`: Target GitHub repository.
+- `--manifest <path>`: Path to the manifest file containing paths of files to upload.
+- `--token <token>`: GitHub personal access token (falls back to `GITHUB_TOKEN`).
+
+---
+
+## Tests
+
+Run the test suite:
+
+```bash
+python3 -m unittest discover tests -v
 ```
 
 ---
