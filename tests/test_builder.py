@@ -1,5 +1,5 @@
-import pytest
-from pif_generator.builder import Extractor, ProfileBuilder, PropParser
+import unittest
+from pif_generator.builder import ProfileBuilder, PropParser
 from pif_generator.models import ExtendedPIFProfile, LegacyPIFProfile
 
 
@@ -19,50 +19,45 @@ ro.debuggable=0
 """
 
 
-def test_prop_parser():
-    props = PropParser.parse(SAMPLE_PROP)
-    assert props["ro.product.model"] == "Pixel 9 Pro XL"
-    assert props["ro.system_ext.build.id"] == "CP41.260814.003.B1"
-    assert props["ro.product.device"] == "komodo"
+class TestPIFBuilder(unittest.TestCase):
+    def test_prop_parser(self):
+        props = PropParser.parse(SAMPLE_PROP)
+        self.assertEqual(props["ro.product.model"], "Pixel 9 Pro XL")
+        self.assertEqual(props["ro.system_ext.build.id"], "CP41.260814.003.B1")
+        self.assertEqual(props["ro.product.device"], "komodo")
 
+    def test_build_extended_profile(self):
+        props = PropParser.parse(SAMPLE_PROP)
+        profile = ProfileBuilder.build_extended(props)
+        self.assertIsInstance(profile, ExtendedPIFProfile)
+        self.assertEqual(profile.ID, "CP41.260814.003.B1")
+        self.assertEqual(profile.BRAND, "google")
+        self.assertEqual(profile.DEVICE, "komodo")
+        self.assertEqual(profile.MANUFACTURER, "Google")
+        self.assertEqual(profile.MODEL, "Pixel 9 Pro XL")
+        self.assertEqual(profile.PRODUCT, "komodo_beta")
+        self.assertEqual(profile.SECURITY_PATCH, "2026-08-14")
+        self.assertEqual(profile.DEVICE_INITIAL_SDK_INT, "34")
+        self.assertEqual(profile.TYPE, "user")
+        self.assertEqual(profile.TAG, "release-keys")
+        self.assertEqual(profile.RELEASE, "17")
+        self.assertFalse(profile.DEBUG)
+        self.assertEqual(profile.spoofBuild, "1")
 
-def test_build_extended_profile():
-    props = PropParser.parse(SAMPLE_PROP)
-    profile = ProfileBuilder.build_extended(props)
-    assert isinstance(profile, ExtendedPIFProfile)
-    assert profile.ID == "CP41.260814.003.B1"
-    assert profile.BRAND == "google"
-    assert profile.DEVICE == "komodo"
-    assert profile.MANUFACTURER == "Google"
-    assert profile.MODEL == "Pixel 9 Pro XL"
-    assert profile.PRODUCT == "komodo_beta"
-    assert profile.SECURITY_PATCH == "2026-08-14"
-    assert profile.DEVICE_INITIAL_SDK_INT == "34"
-    assert profile.TYPE == "user"
-    assert profile.TAG == "release-keys"
-    assert profile.RELEASE == "17"
-    assert profile.DEBUG is False
-    assert profile.spoofBuild == "1"
+    def test_build_legacy_profile(self):
+        props = PropParser.parse(SAMPLE_PROP)
+        profile = ProfileBuilder.build_legacy(props)
+        self.assertIsInstance(profile, LegacyPIFProfile)
+        self.assertEqual(profile.MODEL, "Pixel 9 Pro XL")
+        self.assertEqual(profile.FIRST_API_LEVEL, "34")
+        self.assertEqual(profile.SECURITY_PATCH, "2026-08-14")
 
-
-def test_build_legacy_profile():
-    props = PropParser.parse(SAMPLE_PROP)
-    profile = ProfileBuilder.build_legacy(props)
-    assert isinstance(profile, LegacyPIFProfile)
-    assert profile.MODEL == "Pixel 9 Pro XL"
-    assert profile.FIRST_API_LEVEL == "34"
-    assert profile.SECURITY_PATCH == "2026-08-14"
-
-
-def test_invalid_sdk_validation():
-    props = PropParser.parse(SAMPLE_PROP)
-    props["ro.product.first_api_level"] = "10"
-    with pytest.raises(Exception):
-        ProfileBuilder.build_extended(props)
+    def test_invalid_sdk_validation(self):
+        props = PropParser.parse(SAMPLE_PROP)
+        props["ro.product.first_api_level"] = "10"
+        with self.assertRaises(Exception):
+            ProfileBuilder.build_extended(props)
 
 
 if __name__ == "__main__":
-    test_prop_parser()
-    test_build_extended_profile()
-    test_build_legacy_profile()
-    print("Self-test completed successfully.")
+    unittest.main()
