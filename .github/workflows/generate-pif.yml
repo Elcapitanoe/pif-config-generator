@@ -1,8 +1,6 @@
 name: Automated PIF Profile Generator
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
   schedule:
     - cron: '0 2 * * *'
