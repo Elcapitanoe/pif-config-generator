@@ -62,8 +62,8 @@ jobs:
         run: |
           pif-gen check --state-dir state
 
-  generate-and-publish:
-    name: Generate and Release Profiles
+  build-profiles:
+    name: Extract and Build Profiles
     needs: check-upstream
     if: needs.check-upstream.outputs.new_release == 'true'
     runs-on: ubuntu-latest
@@ -92,7 +92,7 @@ jobs:
             --channel "${{ matrix.release.channel }}" \
             --assets-json '${{ toJson(matrix.release.assets) }}' \
             --output-dir output \
-            --manifest output/manifest.txt
+            --manifest output/manifest_${{ matrix.release.channel }}.txt
 
       - name: Validate generated JSON files
         run: |
@@ -101,18 +101,55 @@ jobs:
             python -m json.tool "$file" > /dev/null
           done
 
-      - name: Update tracker state
+      - name: Save upstream tag info
         run: |
           mkdir -p state
           echo "${{ matrix.release.tag }}" > "state/last_${{ matrix.release.channel }}_tag.txt"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add state/last_${{ matrix.release.channel }}_tag.txt
-          if ! git diff --staged --quiet; then
-            git commit -m "chore(tracker): update ${{ matrix.release.channel }} tag to ${{ matrix.release.tag }}"
-            git pull --rebase
-            git push
-          fi
+
+      - name: Upload channel output
+        uses: actions/upload-artifact@v4
+        with:
+          name: channel-${{ matrix.release.channel }}
+          path: |
+            output/
+            state/
+          retention-days: 1
+
+  publish-release:
+    name: Publish Unified Release
+    needs: build-profiles
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install package
+        run: |
+          pip install -e .
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: channel-*
+          path: combined/
+
+      - name: Consolidate profiles and state
+        run: |
+          mkdir -p final_output state
+          find combined/ -type f -name "*.json" -exec cp {} final_output/ \;
+          find combined/ -type f -name "last_*_tag.txt" -exec cp {} state/ \;
+          
+          # Create consolidated manifest
+          find final_output/ -type f -name "*.json" > final_output/manifest.txt
+          echo "Total consolidated JSON files: $(wc -l < final_output/manifest.txt)"
 
       - name: Publish GitHub Release
         env:
@@ -120,14 +157,25 @@ jobs:
         run: |
           pif-gen publish \
             --repo "${{ github.repository }}" \
-            --tag "${{ matrix.release.tag }}" \
-            --channel "${{ matrix.release.channel }}" \
-            --manifest output/manifest.txt
+            --manifest final_output/manifest.txt
 
-      - name: Upload workflow artifacts
+      - name: Update tracker state in git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add state/last_*_tag.txt
+          
+          if ! git diff --staged --quiet; then
+            git commit -m "chore(tracker): update release tag state"
+            for i in {1..5}; do
+              git pull --rebase origin main && git push origin main && break || sleep 2
+            done
+          fi
+
+      - name: Upload release bundle artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: pif-profiles-${{ matrix.release.channel }}-${{ matrix.release.tag }}
-          path: output/
+          name: pif-profiles-unified-bundle
+          path: final_output/
           retention-days: 30
