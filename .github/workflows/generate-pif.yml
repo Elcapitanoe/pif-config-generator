@@ -108,9 +108,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: channel-${{ matrix.release.channel }}
-          path: |
-            output/
-            state/
+          path: output/*.json
+          retention-days: 1
+
+      - name: Upload state tracker
+        uses: actions/upload-artifact@v4
+        with:
+          name: state-${{ matrix.release.channel }}
+          path: state/last_${{ matrix.release.channel }}_tag.txt
           retention-days: 1
 
   publish-release:
@@ -142,11 +147,9 @@ jobs:
       - name: Consolidate profiles and state
         run: |
           mkdir -p final_output state
-          find combined/ -type f -name "*.json" -exec cp {} final_output/ \;
-          find combined/ -type f -name "last_*_tag.txt" -exec cp {} state/ \;
-          
-          # Create consolidated manifest
-          find final_output/ -type f -name "*.json" > final_output/manifest.txt
+          find combined/ -type f -name "*.json" -exec cp -v {} final_output/ \;
+          find combined/ -type f -name "last_*_tag.txt" -exec cp -v {} state/ \;
+          ls -1 final_output/*.json > final_output/manifest.txt
           echo "Total consolidated JSON files: $(wc -l < final_output/manifest.txt)"
 
       - name: Publish GitHub Release
