@@ -74,8 +74,6 @@ def handle_publish(args: argparse.Namespace) -> None:
     ]
     manager.publish_release(
         target_repo=args.repo,
-        tag=args.tag,
-        channel=args.channel,
         files=files,
     )
 
@@ -108,8 +106,6 @@ def main() -> None:
     p_pub = subparsers.add_parser("publish", help="Publish generated profiles to a GitHub release")
     p_pub.add_argument("--token", default=None, help="GitHub API token")
     p_pub.add_argument("--repo", required=True, help="Target GitHub repository (owner/repo)")
-    p_pub.add_argument("--tag", required=True, help="Release tag version")
-    p_pub.add_argument("--channel", choices=["stable", "beta"], default="stable")
     p_pub.add_argument("--manifest", default="generated_files.txt", help="Manifest containing file paths")
     p_pub.set_defaults(func=handle_publish)
 
