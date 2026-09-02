@@ -25,9 +25,10 @@ DEFAULT_TARGETS = [
 class ReleaseManager:
     def __init__(self, token: Optional[str] = None):
         self.token = token or os.getenv("GITHUB_TOKEN")
-        if not self.token:
-            raise ValueError("GitHub access token is required (pass token or set GITHUB_TOKEN environment variable).")
-        self.client = Github(auth=Auth.Token(self.token))
+        if self.token:
+            self.client = Github(auth=Auth.Token(self.token))
+        else:
+            self.client = Github()
 
     def check_upstream_updates(
         self,
@@ -85,6 +86,8 @@ class ReleaseManager:
         target_repo: str,
         files: List[Path],
     ) -> None:
+        if not self.token:
+            raise ValueError("GitHub access token is required to publish releases.")
         repo = self.client.get_repo(target_repo)
         now = datetime.now(timezone.utc)
         date_tag = now.strftime("%Y.%m.%d")
