@@ -73,7 +73,7 @@ Properties are resolved across partition namespaces (`system_ext` > `system` > `
 
 ### Prerequisites
 
-Linux system (Ubuntu/Debian, Fedora, Arch, or macOS/WSL), install `Python 3.10+`, `pip`, `venv`, and `git`:
+Install `Python 3.10+`, `pip`, and `git`:
 
 **Ubuntu / Debian / WSL:**
 ```bash
@@ -95,6 +95,12 @@ sudo pacman -S --needed python python-pip git
 brew install python git
 ```
 
+**Windows:**
+Install Python 3.10+ via [python.org](https://www.python.org/downloads/) or winget:
+```powershell
+winget install Python.Python.3.12 Git.Git
+```
+
 ### Setup
 
 ```bash
@@ -104,11 +110,11 @@ cd pif-config-generator
 
 # 2. Create and activate an isolated virtual environment
 python3 -m venv venv
-source venv/bin/activate
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# 3. Upgrade pip and install package in editable mode
+# 3. Upgrade pip and install package in editable mode with dev tools
 pip install --upgrade pip
-pip install -e .
+pip install -e ".[dev]"
 ```
 
 Verify the installation:
@@ -175,10 +181,12 @@ ro.debuggable=0
 
 Poll monitored upstream repositories (`Pixel-Props/build.prop` for stable, `Elcapitanoe/Build-Prop-BETA` for beta) and compare latest releases against local tracking tags in `state/last_<channel>_tag.txt`.
 
-Requires a GitHub personal access token with repo scope:
+Works unauthenticated for checking public releases (subject to standard GitHub API rate limits), or authenticated via personal access token:
 
 ```bash
+# Optional: Set token to avoid rate limits
 export GITHUB_TOKEN="ghp_xxx"
+
 pif-gen check --state-dir state
 ```
 
@@ -249,7 +257,13 @@ Options:
 
 ## Tests
 
-Run the test suite:
+Run the test suite using `pytest`:
+
+```bash
+pytest tests/ -v
+```
+
+Or using the standard library test runner:
 
 ```bash
 python3 -m unittest discover tests -v
