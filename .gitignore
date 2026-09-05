@@ -1,0 +1,36 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local state and outputs
+output/
+combined/
+final_output/
+generated_files.txt
+*.log
+
+# Editor directories
+.idea/
+.vscode/
+*.swp
+*.swo
+uv.lock

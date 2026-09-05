@@ -1,7 +1,6 @@
-import json
 import logging
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 
 from .builder import Extractor, ProfileBuilder, PropParser
 from .models import ChannelType, ExtendedPIFProfile, LegacyPIFProfile, OutputFormat

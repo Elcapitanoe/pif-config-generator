@@ -1,10 +1,10 @@
 import io
 import re
 import zipfile
-from typing import Dict, Optional, Union
+from typing import Dict
 import requests
 
-from .models import ChannelType, ExtendedPIFProfile, LegacyPIFProfile, OutputFormat
+from .models import ExtendedPIFProfile, LegacyPIFProfile
 
 
 class PropParser:

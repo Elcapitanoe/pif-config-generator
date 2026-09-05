@@ -14,5 +14,10 @@ dependencies = [
     "pydantic>=2.5.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
 [project.scripts]
 pif-gen = "pif_generator.cli:main"

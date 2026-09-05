@@ -50,9 +50,11 @@ class ReleaseManager:
                 repo = self.client.get_repo(full_repo_name)
                 try:
                     latest = repo.get_latest_release()
-                except GithubException:
-                    logger.warning("No release found on repository %s", full_repo_name)
-                    continue
+                except GithubException as exc:
+                    if exc.status == 404:
+                        logger.warning("No release found on repository %s", full_repo_name)
+                        continue
+                    raise
 
                 current_tag = latest.tag_name
                 if last_tag == current_tag:
