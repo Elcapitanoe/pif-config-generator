@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import os
+import sys
 from pathlib import Path
 
 from .models import ChannelType, OutputFormat
@@ -34,6 +35,9 @@ def handle_check(args: argparse.Namespace) -> None:
 
 
 def handle_build(args: argparse.Namespace) -> None:
+    if not args.file and not args.assets_json:
+        sys.exit("Error: either --file or --assets-json must be provided.")
+
     pipeline = PIFPipeline(
         channel=ChannelType(args.channel),
         format_type=OutputFormat(args.format),
@@ -79,33 +83,49 @@ def handle_publish(args: argparse.Namespace) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        prog="pif-config-generator",
-        description="Automated Play Integrity profile extraction and release tool",
+        prog="pif-gen",
+        description="Automated Play Integrity profile extraction and release tool.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debug logging")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # Check
-    p_check = subparsers.add_parser("check", help="Check upstream repositories for new releases")
-    p_check.add_argument("--token", default=None, help="GitHub API token")
-    p_check.add_argument("--state-dir", default="state", help="Directory storing release tag trackers")
+    p_check = subparsers.add_parser(
+        "check",
+        help="Check upstream repositories for new releases",
+        description="Poll upstream repositories and report pending releases based on local tag state.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    p_check.add_argument("--token", default=None, help="GitHub token (defaults to GITHUB_TOKEN environment variable)")
+    p_check.add_argument("--state-dir", default="state", help="Directory storing upstream release tag state files")
     p_check.set_defaults(func=handle_check)
 
     # Build
-    p_build = subparsers.add_parser("build", help="Extract and build PIF JSON profiles")
-    p_build.add_argument("--channel", choices=["stable", "beta"], default="stable")
-    p_build.add_argument("--format", choices=["extended", "legacy"], default="extended")
-    p_build.add_argument("--output-dir", default=".", help="Output directory for generated JSONs")
-    p_build.add_argument("--file", help="Path to a single system.prop file")
-    p_build.add_argument("--assets-json", help="JSON array of asset items with name and url")
-    p_build.add_argument("--manifest", default="generated_files.txt", help="Output file list manifest")
+    p_build = subparsers.add_parser(
+        "build",
+        help="Extract and build PIF JSON profiles",
+        description="Extract and validate Play Integrity profiles from a local .prop file or batch asset URLs.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    p_build.add_argument("--channel", choices=["stable", "beta"], default="stable", help="Upstream channel branch")
+    p_build.add_argument("--format", choices=["extended", "legacy"], default="extended", help="Target PIF JSON schema format")
+    p_build.add_argument("--output-dir", default=".", help="Directory to save generated JSON profiles")
+    p_build.add_argument("--file", help="Path to a single input property dump file (e.g. system.prop)")
+    p_build.add_argument("--assets-json", help="JSON array of asset descriptors containing 'name' and 'url'")
+    p_build.add_argument("--manifest", default="generated_files.txt", help="Path to output manifest listing generated file paths")
     p_build.set_defaults(func=handle_build)
 
     # Publish
-    p_pub = subparsers.add_parser("publish", help="Publish generated profiles to a GitHub release")
-    p_pub.add_argument("--token", default=None, help="GitHub API token")
-    p_pub.add_argument("--repo", required=True, help="Target GitHub repository (owner/repo)")
-    p_pub.add_argument("--manifest", default="generated_files.txt", help="Manifest containing file paths")
+    p_pub = subparsers.add_parser(
+        "publish",
+        help="Publish generated profiles to a GitHub release",
+        description="Upload generated profiles listed in a manifest file to GitHub Releases on the target repository.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    p_pub.add_argument("--token", default=None, help="GitHub token (defaults to GITHUB_TOKEN environment variable)")
+    p_pub.add_argument("--repo", required=True, help="Target GitHub repository in owner/repo format")
+    p_pub.add_argument("--manifest", default="generated_files.txt", help="Manifest file containing paths of files to upload")
     p_pub.set_defaults(func=handle_publish)
 
     args = parser.parse_args()
