@@ -129,8 +129,15 @@ Generate a validated PIF JSON profile from a local `system.prop` or property dum
 pif-gen build --file path/to/system.prop --output-dir output
 ```
 
+Or extract directly from a remote ZIP URL:
+
+```bash
+pif-gen build --url "https://github.com/.../device.zip" --output-dir output
+```
+
 Options:
 - `--file <path>`: Path to the input property dump file.
+- `--url <url>`: Direct URL to an upstream property ZIP archive.
 - `--output-dir <dir>`: Destination directory for the generated JSON file (defaults to current directory `.`).
 - `--format <extended|legacy>`: Profile schema to target (`extended` for modern modules, `legacy` for older modules; default: `extended`).
 - `--channel <stable|beta>`: Target release channel label (default: `stable`).

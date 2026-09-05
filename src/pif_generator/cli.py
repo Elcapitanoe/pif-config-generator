@@ -4,6 +4,7 @@ import logging
 import os
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 from .models import ChannelType, OutputFormat
 from .pipeline import PIFPipeline
@@ -35,8 +36,8 @@ def handle_check(args: argparse.Namespace) -> None:
 
 
 def handle_build(args: argparse.Namespace) -> None:
-    if not args.file and not args.assets_json:
-        sys.exit("Error: either --file or --assets-json must be provided.")
+    if not args.file and not args.url and not args.assets_json:
+        sys.exit("Error: either --file, --url, or --assets-json must be provided.")
 
     pipeline = PIFPipeline(
         channel=ChannelType(args.channel),
@@ -50,6 +51,13 @@ def handle_build(args: argparse.Namespace) -> None:
         out_path = Path(args.output_dir) / f"{Path(args.file).stem}.json"
         out_path.write_text(profile.model_dump_json(indent=2), encoding="utf-8")
         print(f"Generated: {out_path}")
+        return
+
+    if args.url:
+        parsed_url = urlparse(args.url)
+        asset_name = Path(parsed_url.path).name or "profile.zip"
+        dest = pipeline.process_zip_url(asset_name, args.url)
+        print(f"Generated: {dest}")
         return
 
     if args.assets_json:
@@ -112,6 +120,7 @@ def main() -> None:
     p_build.add_argument("--format", choices=["extended", "legacy"], default="extended", help="Target PIF JSON schema format")
     p_build.add_argument("--output-dir", default=".", help="Directory to save generated JSON profiles")
     p_build.add_argument("--file", help="Path to a single input property dump file (e.g. system.prop)")
+    p_build.add_argument("--url", help="Direct URL to an upstream property ZIP archive")
     p_build.add_argument("--assets-json", help="JSON array of asset descriptors containing 'name' and 'url'")
     p_build.add_argument("--manifest", default="generated_files.txt", help="Path to output manifest listing generated file paths")
     p_build.set_defaults(func=handle_build)
